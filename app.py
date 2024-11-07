@@ -6,13 +6,16 @@ import uvicorn
 
 load_dotenv()
 
-
+    
 app = FastAPI(title='EmpowerHub', version='0.0.1')
 
 
-@app.get('/get-prompt')
-async def get_text_to_sql_response(request: Request):
-    return get_gemini_response(request.json())
+@app.post('/get-prompt')
+async def get_text_to_sql_response(query: str):
+    # query = {
+    #     "question" : "Get all the users"
+    # }
+    return get_gemini_response(query)
 
 
 if __name__ == '__main__':

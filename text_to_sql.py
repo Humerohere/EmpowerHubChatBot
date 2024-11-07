@@ -85,9 +85,6 @@ def get_gemini_response(question):
     """
 
     # Use the Google Gemini model to generate the SQL query
-    model = genAI.GenerativeModel('gemini-pro')
+    model = genAI.GenerativeModel('gemini-1.5-flash-8b')
     response = model.generate_content([prompt])
     return response.text.strip()
-
-response = get_gemini_response("delete all users")
-print(response)
