@@ -68,23 +68,28 @@ CREATE TABLE user_otps (
 """
 
 
+
+
+
+
 # Function to generate SQL using Gemini AI
-def get_gemini_response(question):
+def get_gemini_response(query):
     prompt = f"""
     ### Task
-
-    Generate a SQL query to answer the following question: {question}
+    You are a schema creater and you have to do the following things only provide the schemas based on the user query but if the query is irrelevant then return sorry you asked a wrong question
+    Generate a SQL query to answer the following question: {query}
 
     ### PostgreSQL Database Schema
     The query will run on a database with the following schema:
     {schema}
 
     ### Answer
-    Here is the SQL query that answers the question: {question}
+    Here is the SQL query that answers the question: {query}
     sql
     """
 
     # Use the Google Gemini model to generate the SQL query
     model = genAI.GenerativeModel('gemini-1.5-flash-8b')
     response = model.generate_content([prompt])
+    print(response)
     return response.text.strip()
