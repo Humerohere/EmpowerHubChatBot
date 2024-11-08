@@ -68,28 +68,96 @@ CREATE TABLE user_otps (
 """
 
 
-
-
-
-
-# Function to generate SQL using Gemini AI
+# Function to generate SQL using Gemini AI with detailed schema understanding and restrictions
 def get_gemini_response(query):
-    prompt = f"""
-    ### Task
-    You are a schema creater and you have to do the following things only provide the schemas based on the user query but if the query is irrelevant then return sorry you asked a wrong question
-    Generate a SQL query to answer the following question: {query}
+    if not isinstance(query, str) or len(query.strip()) == 0:
+        return "I cannot understand your request. Please provide a valid query."
 
-    ### PostgreSQL Database Schema
-    The query will run on a database with the following schema:
-    {schema}
+    # Detailed schema explanation
+    schema_explanation = """
+    The database contains the following tables and relationships:
 
-    ### Answer
-    Here is the SQL query that answers the question: {query}
-    sql
+    1. **users**: This table stores information about each user in the system.
+        - Columns:
+            - id: Primary key (user ID)
+            - manager_id: Foreign key referencing another user who is the manager of this user.
+            - first_name, last_name: Name of the user.
+            - designation: Job title of the user (e.g., Developer, Manager, etc.).
+            - email, phone: Unique contact information for the user.
+            - password: User's password (hashed).
+            - role: Role of the user (e.g., employee, manager, HR).
+            - country: User's country (e.g., Pakistan, UAE, UK).
+            - fcm_token: Token for push notifications (optional).
+            - image: URL to the user's profile image (optional).
+            - created_at, updated_at: Timestamps for record creation and update.
+
+    2. **leaves_balances**: Tracks the leave balance for each user.
+        - Columns:
+            - id: Primary key.
+            - sick_available, casual_available, wfh_available: Available balance for sick, casual, and work-from-home leaves.
+            - sick_taken, casual_taken, wfh_taken: Leaves already taken for each category.
+            - user_id: Foreign key linking to the user who owns the leave balance.
+            - created_at, updated_at: Timestamps for record creation and update.
+
+    3. **leaves**: Records each leave request submitted by users.
+        - Columns:
+            - id: Primary key.
+            - user_id: Foreign key linking to the user who submitted the leave.
+            - manager_id: Foreign key linking to the manager who approves the leave.
+            - username: The username of the employee.
+            - type: The type of leave (sick, casual, work-from-home).
+            - from_date, to_date: The start and end dates of the leave.
+            - comments: Any comments related to the leave.
+            - status: The status of the leave request (pending, approved, or rejected).
+            - created_at, updated_at: Timestamps for record creation and update.
+
+    4. **user_otps**: Stores one-time passwords (OTPs) for users, used for authentication purposes.
+        - Columns:
+            - id: Primary key.
+            - user_id: Foreign key linking to the user for whom the OTP was generated.
+            - otp: The OTP code.
+            - otp_expiry: Expiration time for the OTP.
+            - created_at: Timestamp for OTP creation.
+
+    **Relationships**:
+    - The `users` table has a self-referential relationship via the `manager_id`, where a manager is also a user.
+    - The `leaves` table links both users and managers through `user_id` and `manager_id`.
+    - The `leaves_balances` table links each leave balance record to a user via `user_id`.
+    - The `user_otps` table links OTPs to users via `user_id`.
     """
 
-    # Use the Google Gemini model to generate the SQL query
-    model = genAI.GenerativeModel('gemini-1.5-flash-8b')
-    response = model.generate_content([prompt])
-    print(response)
-    return response.text.strip()
+    # Prompt with detailed schema explanation
+    prompt = f"""
+    ### Task
+    You are a SQL expert. Given the following PostgreSQL database schema and its detailed explanation, your task is to generate an accurate SQL query based on the user's question. 
+    If the query is irrelevant to the schema, respond with "Sorry, your question is not related to this database."
+
+    ### PostgreSQL Database Schema:
+    {schema}
+
+    ### Schema Explanation:
+    {schema_explanation}
+
+    ### User Query:
+    {query}
+
+    ### Answer
+    Based on the schema and the explanation provided, here is the SQL query for the user's request. If the query is irrelevant, respond with: "Sorry, your question is not related to this database."
+    """
+
+    try:
+        # Use the Google Gemini model to generate the SQL query
+        model = genAI.GenerativeModel('gemini-1.5-flash-8b')
+        response = model.generate_content([prompt])
+
+        # Clean up the response by removing extra formatting
+        result = response.text.strip()
+        result = result.replace("```sql", "").replace("```", "").strip()
+        
+        # Check if the model indicates the question is irrelevant
+        if "Sorry, your question is not related to this database." in result:
+            return "Sorry your question is not related to any use case"
+        
+        return result
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
